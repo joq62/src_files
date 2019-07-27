@@ -63,7 +63,7 @@ deploy_app_discovery(N,Interval,_R)->
 %% Returns: non
 %% --------------------------------------------------------------------
 campaign()->
- %   io:format("*************** Start Campaign ***********' ~p~n",[{date(),time()}]), 
+
     {ok,ConfigNodes}=file:consult(?NODES_CONFIG),
     % Ping all nodes to secure tha resent started nodes are connected
     A=[{Node,net_adm:ping(Node)}||{Node}<-ConfigNodes],

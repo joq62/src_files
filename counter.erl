@@ -4,7 +4,7 @@
 %%%  
 %%% Created : 10 dec 2012
 %%% -------------------------------------------------------------------
--module(controller).
+-module(counter).
 
 -behaviour(gen_server).
 %% --------------------------------------------------------------------
@@ -13,24 +13,21 @@
 %-include("interfacesrc/brd_local.hrl").
 
 %% --------------------------------------------------------------------
--define(NUM_TRIES,5).
--define(DEPLOY_INTERVAL,5000).
+ 
 %% --------------------------------------------------------------------
 %% Key Data structures
 %% 
 %% --------------------------------------------------------------------
--record(state,{
-	      }).
+-record(state,{tick}).
 
 %% --------------------------------------------------------------------
--define(SYNC_INTERVAL,10*1000).
+
 %% ====================================================================
 %% External functions
 %% ====================================================================
 
 
--export([update_config/2,
-	 sync/1
+-export([tick/0,num/0
 	]).
 
 -export([start/0,
@@ -45,7 +42,6 @@
 %% External functions
 %% ====================================================================
 
-%% Asynchrounus Signals
 
 %% Gen server function
 
@@ -54,15 +50,16 @@ stop()-> gen_server:call(?MODULE, {stop},infinity).
 
 
 
-%%-----------Call ------------------------------------------------------------
+%%-----------------------------------------------------------------------
+
+num()->
+    gen_server:call(?MODULE, {num},5000).
 
 
-%%----------Cast-------------------------------------------------------------
-sync(Interval)->
-    gen_server:cast(?MODULE, {sync,Interval}).    
+%%-----------------------------------------------------------------------
+tick()->
+    gen_server:cast(?MODULE, {tick}).
 
-update_config(Filename,Binary)->
-    gen_server:cast(?MODULE, {update_config,Filename,Binary}).
 %% ====================================================================
 %% Server functions
 %% ====================================================================
@@ -77,13 +74,9 @@ update_config(Filename,Binary)->
 %
 %% --------------------------------------------------------------------
 init([]) ->
-    application:start(app_discovery),    
-    application:start(app_deploy),
-    R=rpc:call(node(),controller_lib,deploy_app_discovery,[?NUM_TRIES,?DEPLOY_INTERVAL,false]),
-    io:format("R= ~p~n",[{date(),time(),?MODULE,?LINE,R}]),
-    spawn(controller,sync,[?SYNC_INTERVAL]),
+    spawn(counter,tick,[]),
     io:format("Started server ~p~n",[{date(),time(),?MODULE}]),
-    {ok, #state{}}.   
+    {ok, #state{tick=0}}.   
     
 %% --------------------------------------------------------------------
 %% Function: handle_call/3
@@ -95,8 +88,21 @@ init([]) ->
 %%          {stop, Reason, Reply, State}   | (terminate/2 is called)
 %%          {stop, Reason, State}            (aterminate/2 is called)
 %% --------------------------------------------------------------------
+
+handle_call({num}, _From, State) ->
+    Nodes=rpc:call(node(),app_discovery,query,[tick],5000),
+    case Nodes of
+	[]->
+	    Reply={error,[?MODULE,?LINE,'eexists',tick]};
+	{badrpc,Err}->
+	    Reply={error,[?MODULE,?LINE,badrpc,Err,tick]};
+	[Node|_]->
+	    Reply={Node,rpc:call(Node,server,num,[],5000)}
+    end,
+    io:format("Num =  ~p~n",[Reply]),    
+    {reply, Reply, State};
+
 handle_call({stop}, _From, State) ->
-  %  io:format("stop ~p~n",[{?MODULE,?LINE}]),
     {stop, normal, shutdown_ok, State};
 
 handle_call(Request, From, State) ->
@@ -110,21 +116,21 @@ handle_call(Request, From, State) ->
 %%          {noreply, State, Timeout} |
 %%          {stop, Reason, State}            (terminate/2 is called)
 %% --------------------------------------------------------------------
-handle_cast({sync,Interval},State) ->
-    io:format("*************** Start Campaign ***********' ~p~n",[{date(),time()}]), 
-    {StartResult,AvailableNodes,NodeAppsList}=rpc:call(node(),controller_lib,campaign,[],5000),
-    
-    io:format("StartResult = ~p~n",[StartResult]),
-    io:format("AvailableNodes = ~p~n",[AvailableNodes]),
-    io:format("NodeAppsList = ~p~n",[NodeAppsList]),
 
-    io:format("------------- End Campaign ----------' ~p~n",[{date(),time()}]),
-    spawn(controller_lib,tick,[Interval]),
-    {noreply, State};
-
-handle_cast({update_config,Filename,Binary},State) ->
-    ok=file:write_file(Filename,Binary),
-    rpc:call(node(),controller_lib,campaign,[],5000),
+handle_cast({tick}, State) ->
+    Nodes=rpc:call(node(),app_discovery,query,[tick],5000),
+    case Nodes of
+	[]->
+	    Reply={error,[?MODULE,?LINE,'eexists',tick]};
+	{badrpc,Err}->
+	    Reply={error,[?MODULE,?LINE,badrpc,Err,tick]};
+	[Node|_]->
+	    rpc:call(Node,server,tick,[],5000),
+	    Reply=rpc:call(Node,server,num,[],5000)
+    end,
+    io:format("Num =  ~p~n",[{time(),Reply}]), 
+    timer:sleep(1000),
+    spawn(counter,tick,[]),
     {noreply, State};
 
 handle_cast(Msg, State) ->
@@ -160,13 +166,14 @@ code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
 
 %% --------------------------------------------------------------------
-%%% Exyernal functions
+%%% Internal functions
 %% --------------------------------------------------------------------
 %% --------------------------------------------------------------------
 %% Function: 
 %% Description:
 %% Returns: non
 %% --------------------------------------------------------------------
+
 
 %% --------------------------------------------------------------------
 %% Internal functions
