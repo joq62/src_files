@@ -112,11 +112,14 @@ handle_call(Request, From, State) ->
 %% --------------------------------------------------------------------
 handle_cast({sync,Interval},State) ->
     io:format("*************** Start Campaign ***********' ~p~n",[{date(),time()}]), 
-    {StartResult,AvailableNodes,NodeAppsList}=rpc:call(node(),controller_lib,campaign,[],5000),
-    
-    io:format("StartResult = ~p~n",[StartResult]),
-    io:format("AvailableNodes = ~p~n",[AvailableNodes]),
-    io:format("NodeAppsList = ~p~n",[NodeAppsList]),
+    case rpc:call(node(),controller_lib,campaign,[],30000) of
+	{badrpc,Err}->
+	    io:format("StartResult = ~p~n",[{?MODULE,?LINE,error,Err}]);
+	{StartResult,AvailableNodes,NodeAppsList}->
+	    io:format("StartResult = ~p~n",[StartResult]),
+	    io:format("AvailableNodes = ~p~n",[AvailableNodes]),
+	    io:format("NodeAppsList = ~p~n",[NodeAppsList])
+    end,
 
     io:format("------------- End Campaign ----------' ~p~n",[{date(),time()}]),
     spawn(controller_lib,tick,[Interval]),
