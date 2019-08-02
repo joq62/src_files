@@ -18,15 +18,29 @@
 -define(PATH_APP_FILES,"app_files").
 -define(PATH_SRC_FILES,"src_files").
 %% External exports,
--compile(export_all).
+%-compile(export_all).
 
-%-export([load_start_node/3,stop_unload_node/3
-%	]).
+-export([load_start_app/2,stop_unload_app/2,
+	 cast/2
+	]).
 
 
 %% ====================================================================
 %% External functions
 %% ====================================================================
+
+cast(App,{M,F,A})->
+ %   io:format("App,{M,F,A} = ~p~n",[{?MODULE,?LINE,App,{M,F,A}}]),
+    case rpc:call(node(),app_discovery,query,[App]) of
+	{badrpc,Err}->
+	    Reply={error,[Err]};
+	[AppNode|_] ->
+	    Reply=rpc:cast(AppNode,M,F,A);
+	[] ->
+	    Reply={error,[{?MODULE,?LINE,'no avaible application',App}]}
+    end,
+    Reply.
+
 %% --------------------------------------------------------------------
 %% Function: 
 %% Description:
@@ -51,7 +65,7 @@ load_start_app(Node,Application)->
 		 %   Modules_Filenames=[{Module,filename:join(?PATH_EBIN,atom_to_list(Module)++".beam")}||Module<-Modules],
 		    Modules_Filenames=[{Module,filename:join(?PATH_SRC_FILES,atom_to_list(Module)++".erl")}||Module<-Modules],
 		    Result = load_modules(Node,Modules_Filenames,[]),
-		    io:format("Result = load_modules ~p~n",[{?MODULE,?LINE,Result}]),
+%		    io:format("Result = load_modules ~p~n",[{?MODULE,?LINE,Result}]),
 		    {ok,Binary}=file:read_file(AppFullFilename),
 		    ok=rpc:call(Node,file,write_file,[AppFilename,Binary],5000),
 		    case rpc:call(Node,application,start,[Application]) of
@@ -77,8 +91,8 @@ load_modules(Node,[{Module, Filename}|T],Acc)->
     R=rpc:call(Node,c,c,[Module],5000),
     
   %  R=rpc:call(Node,code,load_binary,[Module, BaseName, Binary],5000), 
-  %  NewAcc=[{Node,Module,R}|Acc],
-    NewAcc=[{Node,Module}|Acc],
+    NewAcc=[{Node,Module,R}|Acc],
+  %  NewAcc=[{Node,Module}|Acc],
     load_modules(Node,T,NewAcc).
 
 
@@ -111,19 +125,8 @@ unload_modules(Node,[Module|T])->
     _RD=rpc:call(Node,code,delete,[Module],5000),
     unload_modules(Node,T).
 
-campaign(NodeAppInfo)->
-  %  Available_Nodes=[node()|nodes()],
-    {?MODULE,?LINE,glurk}.    
-
-
 %% --------------------------------------------------------------------
 %% Function: 
 %% Description:
 %% Returns: non
 %% --------------------------------------------------------------------
-interval_delay(Interval)->    
-    timer:sleep(Interval),
-    {ok,NodeAppInfo}=file:consult(?NODE_APP_CONFIG),
-    app_deploy:campaign(NodeAppInfo),
-    ok.
-    

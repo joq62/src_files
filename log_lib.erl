@@ -4,7 +4,7 @@
 %%%
 %%% Created : 10 dec 2012
 %%% -------------------------------------------------------------------
--module(adder_lib).
+-module(log_lib).
  
 
 
@@ -15,34 +15,38 @@
 %% --------------------------------------------------------------------
 
 %% External exports
-%-compile(export_all).
+-compile(export_all).
 
--export([add/2,cast/2
-	]).
+%-export([load_start_node/3,stop_unload_node/3
+%	]).
 
 
 %% ====================================================================
 %% External functions
 %% ====================================================================
-cast(App,{M,F,A})->
-    io:format("App,{M,F,A} = ~p~n",[{?MODULE,?LINE,App,{M,F,A}}]),
-    case rpc:call(node(),app_discovery,query,[App]) of
-	{badrpc,Err}->
-	    Reply={error,[Err]};
-	[AppNode|_] ->
-	    Reply=rpc:cast(AppNode,M,F,A);
-	[] ->
-	    Reply={error,[{?MODULE,?LINE,'no avaible application',App}]}
-    end,
-    Reply.
+%% --------------------------------------------------------------------
+%% Function: 
+%% Description:
+%% Returns: non
+%% --------------------------------------------------------------------
 
 %% --------------------------------------------------------------------
 %% Function: 
 %% Description:
 %% Returns: non
 %% --------------------------------------------------------------------
-add(A,B)->
-    A+B.
+add_event(Date,Time,Event,Events,EventNr,MaxEvents)->
+    LogElem=lists:append([{date,Date},{time,Time}],Event),
+    NewEvents=[LogElem|lists:sublist(Events,MaxEvents-1)],
+    case EventNr of
+	MaxEvents->
+	    NewEventNr=MaxEvents;
+	_->
+	    NewEventNr=lists:flatlength(NewEvents)
+    end,
+    {NewEvents,NewEventNr}.
+	
+
 %% --------------------------------------------------------------------
 %% Function: 
 %% Description:

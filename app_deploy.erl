@@ -61,8 +61,6 @@ stop_unload_app(Node,App)->
     gen_server:call(?MODULE, {stop_unload_app,Node,App},10*1000).
 
 %%----------Cast-------------------------------------------------------------
-sync(Interval)->
-    gen_server:cast(?MODULE, {sync,Interval}).    
 
 %% ====================================================================
 %% Server functions
@@ -78,7 +76,8 @@ sync(Interval)->
 %
 %% --------------------------------------------------------------------
 init([]) ->
-    io:format("Started server ~p~n",[{date(),time(),?MODULE}]),
+    StartEvent=[{node,node()},{event_level,info},{event_info,['Started server',?MODULE]}],
+    rpc:cast(node(),app_deploy_lib,cast,[log,{log,add_event,[StartEvent]}]),
     {ok, #state{}}.   
     
 %% --------------------------------------------------------------------
@@ -95,11 +94,15 @@ init([]) ->
 handle_call({load_start_app,Node,App}, _From, State) ->
 %    Reply={?MODULE,?LINE},
     Reply=rpc:call(node(),app_deploy_lib,load_start_app,[Node,App],5000),
+   % Event=[{node,node()},{event_level,info},{event_info,['load_start_app ',Node,App,Reply]}],
+   % rpc:cast(node(),controller_lib,cast,[log,{log,add_event,[Event]}]),
     {reply, Reply, State};
 
 handle_call({stop_unload_app,Node,App}, _From, State) ->
 %    Reply={?MODULE,?LINE},
     Reply=rpc:call(node(),app_deploy_lib,stop_unload_app,[Node,App],5000),
+   % Event=[{node,node()},{event_level,info},{event_info,['stop_unload_app ',Node,App,Reply]}],
+  %  rpc:cast(node(),controller_lib,cast,[log,{log,add_event,[Event]}]),
     {reply, Reply, State};
 
 

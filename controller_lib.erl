@@ -23,15 +23,33 @@
 -define(GIT_EBIN_FILES,"https://github.com/joq62/ebin_files.git").
 
 %% External exports,
--compile(export_all).
+%-compile(export_all).
 
-%-export([load_start_node/3,stop_unload_node/3
-%	]).
+-export([campaign/0,deploy_app_discovery/3,tick/1,
+	 cast/2
+	]).
 
 
 %% ====================================================================
 %% External functions
 %% ====================================================================
+%% --------------------------------------------------------------------
+%% Function: 
+%% Description:
+%% Returns: non
+%% --------------------------------------------------------------------
+cast(App,{M,F,A})->
+ %   io:format("App,{M,F,A} = ~p~n",[{?MODULE,?LINE,App,{M,F,A}}]),
+    case rpc:call(node(),app_discovery,query,[App]) of
+	{badrpc,Err}->
+	    Reply={error,[Err]};
+	[AppNode|_] ->
+	    Reply=rpc:cast(AppNode,M,F,A);
+	[] ->
+	    Reply={error,[{?MODULE,?LINE,'no avaible application',App}]}
+    end,
+    Reply.
+
 %% --------------------------------------------------------------------
 %% Function: 
 %% Description:
@@ -51,7 +69,7 @@ deploy_app_discovery(N,Interval,_R)->
 	    {ok,ConfigNodes}=file:consult(?NODES_CONFIG),
 	    [net_adm:ping(Node)||{Node}<-ConfigNodes],
 	    Nodes=nodes(),
-	    R=[{Node,app_discovery,rpc:call(node(),app_deploy,load_start_app,[Node,app_discovery])}||Node<-Nodes],
+	    _R=[{Node,app_discovery,rpc:call(node(),app_deploy,load_start_app,[Node,app_discovery])}||Node<-Nodes],
 	    NewN=N-1,
 	    NewR=ok
     end,
@@ -66,14 +84,16 @@ campaign()->
 
     {ok,ConfigNodes}=file:consult(?NODES_CONFIG),
     % Ping all nodes to secure tha resent started nodes are connected
-    A=[{Node,net_adm:ping(Node)}||{Node}<-ConfigNodes],
+  %  _A=[{Node,net_adm:ping(Node)}||{Node}<-ConfigNodes],
+    [net_adm:ping(Node)||{Node}<-ConfigNodes],
     AvailableNodes=nodes(), % Exclude controller node
 
     {ok,Info}=file:consult(?NODE_APP_CONFIG),
     NodeAppsList=app_discovery:node_apps_list(),
 
     % Check applications to start and start them
-    StartResult=apps_to_start(Info,NodeAppsList,AvailableNodes,[]), 
+    StartResult=apps_to_start(Info,NodeAppsList,AvailableNodes,[]),
+    
     {StartResult,AvailableNodes,NodeAppsList}.
 
 apps_to_start([],_,_,StartedApps)->
@@ -105,35 +125,12 @@ apps_to_start([{App,Nodes}|T],NodeAppsList,AvailableNodes,Acc) ->
    % io:format("NewAcc ~p~n",[{?MODULE,?LINE,NewAcc}]),
     apps_to_start(T,NodeAppsList,AvailableNodes,NewAcc).
 
-		     
-tick(Interval)->
-    timer:sleep(Interval),
-    controller:sync(Interval).
-
 %% --------------------------------------------------------------------
 %% Function: 
 %% Description:
 %% Returns: non
 %% --------------------------------------------------------------------
+tick(Interval)->
+    timer:sleep(Interval),
+    controller:sync(Interval).
 
-do_deploy(_,[],_)->
-    glurk=error;
-do_deploy([],_AvailableNodes,Result)->
-    io:format("~p~n",[{?MODULE,?LINE,Result}]);
-do_deploy([{App,Nodes}|T],AvailableNodes,Acc) ->
-   io:format("~p~n",[{?MODULE,?LINE,App,Nodes,AvailableNodes}]),
-    R=case Nodes of
-	  all->
-	      io:format("~p~n",[{?MODULE,?LINE,all}]),
-	      glurk=[app_deploy:load_start_app(Node,App)||Node<-AvailableNodes];
-	  any ->
-	      io:format("~p~n",[{?MODULE,?LINE,any}]),
-	      [Node|_]=AvailableNodes,
-%	      io:format("~p~n",[{?MODULE,?LINE,Node}]),
-	      glurk=app_deploy:load_start_app(Node,App);
-	  Nodes->
-	      io:format("~p~n",[{?MODULE,?LINE,Nodes}]),
-	      glurk=[app_deploy:load_start_app(Node,App)||Node<-Nodes]
-      end,
-    NewR=lists:append(R,Acc), 
-    do_deploy(T,AvailableNodes,NewR).

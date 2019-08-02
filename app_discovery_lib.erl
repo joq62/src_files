@@ -15,10 +15,10 @@
 %% --------------------------------------------------------------------
 
 %% External exports
--compile(export_all).
+%-compile(export_all).
 
-%-export([load_start_node/3,stop_unload_node/3
-%	]).
+-export([sync/1,check_apps/0,tick/1
+	]).
 
 
 %% ====================================================================
@@ -40,18 +40,17 @@
 %% --------------------------------------------------------------------
 sync(Interval)->
     {NodeAppList,AppNodesList}=check_apps(),
+    spawn(app_discovery_lib,tick,[Interval]),
     {NodeAppList,AppNodesList}.
 check_apps()->
     ListOfNodes=[node()|nodes()],
+%    io:format("ListOfNodes ~p~n",[{?MODULE,?LINE,ListOfNodes}]),
     Z=[{Node,rpc:call(Node,application,which_applications,[],5000)}||Node<-ListOfNodes],
+%    io:format("Z ~p~n",[{?MODULE,?LINE,Z}]),
     NodeAppList=node_apps_list(Z,[]),
     AppNodesList=app_nodes_list(NodeAppList,[]),
     {NodeAppList,AppNodesList}.
 
-
-tick(Interval)->
-    timer:sleep(Interval),
-    app_discovery:sync(Interval).
 %% --------------------------------------------------------------------
 %% Function: 
 %% Description:
@@ -71,3 +70,12 @@ app_nodes_list([{Node,AppsList}|T],Acc)->
     A=[{App,Node}||App<-AppsList],
     NewAcc=lists:append(A,Acc),
     app_nodes_list(T,NewAcc).    
+
+%% --------------------------------------------------------------------
+%% Function: 
+%% Description:
+%% Returns: non
+%% --------------------------------------------------------------------
+tick(Interval)->
+    timer:sleep(Interval),
+    app_discovery:sync(Interval).

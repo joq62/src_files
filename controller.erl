@@ -19,7 +19,7 @@
 %% Key Data structures
 %% 
 %% --------------------------------------------------------------------
--record(state,{
+-record(state,{available_nodes,node_apps_list,latest_start_result
 	      }).
 
 %% --------------------------------------------------------------------
@@ -29,7 +29,8 @@
 %% ====================================================================
 
 
--export([update_config/2,
+-export([ctrl_info/0,
+	 update_config/2,
 	 sync/1
 	]).
 
@@ -55,7 +56,7 @@ stop()-> gen_server:call(?MODULE, {stop},infinity).
 
 
 %%-----------Call ------------------------------------------------------------
-
+ctrl_info()-> gen_server:call(?MODULE, {ctrl_info},infinity).
 
 %%----------Cast-------------------------------------------------------------
 sync(Interval)->
@@ -77,12 +78,15 @@ update_config(Filename,Binary)->
 %
 %% --------------------------------------------------------------------
 init([]) ->
+  %   
     application:start(app_discovery),    
+    application:start(log), 
     application:start(app_deploy),
     R=rpc:call(node(),controller_lib,deploy_app_discovery,[?NUM_TRIES,?DEPLOY_INTERVAL,false]),
-    io:format("R= ~p~n",[{date(),time(),?MODULE,?LINE,R}]),
+  %  io:format("R= ~p~n",[{date(),time(),?MODULE,?LINE,R}]),
     spawn(controller,sync,[?SYNC_INTERVAL]),
-    io:format("Started server ~p~n",[{date(),time(),?MODULE}]),
+    StartEvent=[{node,node()},{event_level,info},{event_info,['Started server',?MODULE]}],
+    rpc:cast(node(),controller_lib,cast,[log,{log,add_event,[StartEvent]}]),
     {ok, #state{}}.   
     
 %% --------------------------------------------------------------------
@@ -95,6 +99,11 @@ init([]) ->
 %%          {stop, Reason, Reply, State}   | (terminate/2 is called)
 %%          {stop, Reason, State}            (aterminate/2 is called)
 %% --------------------------------------------------------------------
+handle_call({ctrl_info},_From, State) ->
+    Reply = {State#state.available_nodes,
+	     State#state.node_apps_list,State#state.latest_start_result},
+    {reply, Reply, State};
+
 handle_call({stop}, _From, State) ->
   %  io:format("stop ~p~n",[{?MODULE,?LINE}]),
     {stop, normal, shutdown_ok, State};
@@ -111,19 +120,29 @@ handle_call(Request, From, State) ->
 %%          {stop, Reason, State}            (terminate/2 is called)
 %% --------------------------------------------------------------------
 handle_cast({sync,Interval},State) ->
-    io:format("*************** Start Campaign ***********' ~p~n",[{date(),time()}]), 
+%    io:format("*************** Start Campaign ***********' ~p~n",[{date(),time()}]), 
     case rpc:call(node(),controller_lib,campaign,[],30000) of
 	{badrpc,Err}->
-	    io:format("StartResult = ~p~n",[{?MODULE,?LINE,error,Err}]);
+	    NewState=State,
+	    io:format(" = ~p~n",[{?MODULE,?LINE,error,Err}]);
 	{StartResult,AvailableNodes,NodeAppsList}->
-	    io:format("StartResult = ~p~n",[StartResult]),
-	    io:format("AvailableNodes = ~p~n",[AvailableNodes]),
-	    io:format("NodeAppsList = ~p~n",[NodeAppsList])
+	    NewState=State#state{available_nodes=AvailableNodes,
+				 node_apps_list=NodeAppsList,
+				 latest_start_result=StartResult},
+%	    io:format("NodeAppsList = ~p~n",[{?MODULE,?LINE,AvailableNodes,NodeAppsList}]),
+	   % Event=[{node,node()},{event_level,info},{event_info,['NodeAppsList',NodeAppsList]}],
+	   % rpc:cast(node(),controller_lib,cast,[log,{log,add_event,[Event]}]),
+	    ok
     end,
-
-    io:format("------------- End Campaign ----------' ~p~n",[{date(),time()}]),
+    case log:new_event() of
+	false->
+	    ok;
+	NewEvent->
+	    io:format(" ~p~n",[NewEvent])
+    end,
+ %   io:format("------------- End Campaign ----------' ~p~n",[{date(),time()}]),
     spawn(controller_lib,tick,[Interval]),
-    {noreply, State};
+    {noreply, NewState};
 
 handle_cast({update_config,Filename,Binary},State) ->
     ok=file:write_file(Filename,Binary),

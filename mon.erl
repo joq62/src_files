@@ -1,65 +1,72 @@
 %%% -------------------------------------------------------------------
 %%% Author  : Joq Erlang
-%%% Description : test application calc
+%%% Description : 
+%%% {event,[?MODULE,?LINE,info]}        % Normal event information
+%%% {notification,[?MODULE,?LINE,info]} % Strange behaviour ex unmatched signal
+%%% {error,[?MODULE,?LINE,info]}        % Execution error
 %%%  
 %%% Created : 10 dec 2012
 %%% -------------------------------------------------------------------
--module(adder).
+-module(mon).
 
 -behaviour(gen_server).
 %% --------------------------------------------------------------------
 %% Include files
 %% --------------------------------------------------------------------
-%-include("interfacesrc/brd_local.hrl").
-
+-include_lib("kernel/include/file.hrl").
 %% --------------------------------------------------------------------
- 
+-define(INTERVAL,3000).
+
 %% --------------------------------------------------------------------
 %% Key Data structures
 %% 
+% Value   Severity      Description                                Condition
+%    0 	Emergency    	System is unusable 	                  A panic condition.[8]
+%    1 	Alert 		Action must be taken immediately 	  A condition that should be corrected immediately, 
+%                                                                 such as a corrupted system database.[8]
+%    2 	Critical 	Critical conditions 	                  Hard device errors.[8]
+%    3 	Error   	error                                     Error conditions 	
+%    4 	Warning 	warning                          	  Warning conditions 	
+%    5 	Notice 		Normal but significant conditions 	  Conditions that are not error conditions, 
+%                                                                 but that may require special handling.[8]
+%    6 	Informational 	info 		                          Informational messages 	
+%    7 	Debug 		Debug-level messages 	                  Messages that contain information 
+%                                                                 normally of use only when debugging a program.[8]
 %% --------------------------------------------------------------------
--record(state,{}).
-
-%% --------------------------------------------------------------------
-
-%% ====================================================================
-%% External functions
-%% ====================================================================
+% -record ??
 
 
--export([ add/2
+
+-export([heart_beat/1
 	]).
 
 -export([start/0,
 	 stop/0
-	 ]).
+	]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3,handle_cast/2, handle_info/2, terminate/2, code_change/3]).
 
-
+-record(state, {prev}).
 %% ====================================================================
 %% External functions
 %% ====================================================================
 
-%% Asynchrounus Signals
 
-%% Gen server function
 
+%% Gen server functions
 start()-> gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
+
 stop()-> gen_server:call(?MODULE, {stop},infinity).
 
 
 
 %%-----------------------------------------------------------------------
-
-add(A,B)->
-    gen_server:call(?MODULE, {add,A,B},5000).
-
+heart_beat(Interval)->
+    gen_server:cast(?MODULE, {heart_beat,Interval}).
 
 %%-----------------------------------------------------------------------
-
-
+ 
 %% ====================================================================
 %% Server functions
 %% ====================================================================
@@ -74,9 +81,10 @@ add(A,B)->
 %
 %% --------------------------------------------------------------------
 init([]) ->
-    StartEvent=[{node,node()},{event_level,info},{event_info,['Started server',?MODULE]}],
-    rpc:cast(node(),adder_lib,cast,[log,{log,add_event,[StartEvent]}]),
-    {ok, #state{}}.   
+    Prev=mon_lib:print_event([]),
+    spawn(mon,heart_beat,[?INTERVAL]),
+    
+    {ok, #state{prev=Prev}}.    
     
 %% --------------------------------------------------------------------
 %% Function: handle_call/3
@@ -86,14 +94,10 @@ init([]) ->
 %%          {noreply, State}               |
 %%          {noreply, State, Timeout}      |
 %%          {stop, Reason, Reply, State}   | (terminate/2 is called)
-%%          {stop, Reason, State}            (aterminate/2 is called)
+%%          {stop, Reason, State}            (terminate/2 is called)
 %% --------------------------------------------------------------------
-handle_call({add,A,B}, _From, State) ->
-    Reply=rpc:call(node(),adder_lib,add,[A,B],5000),
-    {reply, Reply, State};
 
 handle_call({stop}, _From, State) ->
-  %  io:format("stop ~p~n",[{?MODULE,?LINE}]),
     {stop, normal, shutdown_ok, State};
 
 handle_call(Request, From, State) ->
@@ -107,6 +111,12 @@ handle_call(Request, From, State) ->
 %%          {noreply, State, Timeout} |
 %%          {stop, Reason, State}            (terminate/2 is called)
 %% --------------------------------------------------------------------
+handle_cast({heart_beat,Interval}, State) ->
+    timer:sleep(Interval),
+    NewPrev=mon_lib:print_event([State#state.prev]),
+    NewState=State#state{prev=NewPrev},
+    spawn(mon,heart_beat,[?INTERVAL]),   
+    {noreply, NewState};
 
 handle_cast(Msg, State) ->
     io:format("unmatched match cast ~p~n",[{?MODULE,?LINE,Msg}]),
@@ -118,11 +128,12 @@ handle_cast(Msg, State) ->
 %% Returns: {noreply, State}          |
 %%          {noreply, State, Timeout} |
 %%          {stop, Reason, State}            (terminate/2 is called)
+%% --------------------------------------------------------------------
+
 
 handle_info(Info, State) ->
-    io:format("unmatched match info ~p~n",[{?MODULE,?LINE,Info}]),
+    io:format("unmatched match cast ~p~n",[{time(),?MODULE,?LINE,Info}]),
     {noreply, State}.
-
 
 %% --------------------------------------------------------------------
 %% Function: terminate/2
@@ -166,4 +177,3 @@ code_change(_OldVsn, State, _Extra) ->
 %% Description:
 %% Returns: non
 %% --------------------------------------------------------------------
-

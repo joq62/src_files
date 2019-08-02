@@ -4,7 +4,7 @@
 %%%
 %%% Created : 10 dec 2012
 %%% -------------------------------------------------------------------
--module(adder_lib).
+-module(mon_lib).
  
 
 
@@ -15,34 +15,46 @@
 %% --------------------------------------------------------------------
 
 %% External exports
-%-compile(export_all).
+-compile(export_all).
 
--export([add/2,cast/2
-	]).
+%-export([load_start_node/3,stop_unload_node/3
+%	]).
 
 
 %% ====================================================================
 %% External functions
 %% ====================================================================
-cast(App,{M,F,A})->
-    io:format("App,{M,F,A} = ~p~n",[{?MODULE,?LINE,App,{M,F,A}}]),
-    case rpc:call(node(),app_discovery,query,[App]) of
-	{badrpc,Err}->
-	    Reply={error,[Err]};
-	[AppNode|_] ->
-	    Reply=rpc:cast(AppNode,M,F,A);
-	[] ->
-	    Reply={error,[{?MODULE,?LINE,'no avaible application',App}]}
-    end,
-    Reply.
+%% --------------------------------------------------------------------
+%% Function: 
+%% Description:
+%% Returns: non
+%% --------------------------------------------------------------------
 
 %% --------------------------------------------------------------------
 %% Function: 
 %% Description:
 %% Returns: non
 %% --------------------------------------------------------------------
-add(A,B)->
-    A+B.
+print_event(Prev)->
+    io:format("~p~n",[Prev]),
+    case rpc:call('controller@joqhome.dynamic-dns.net',
+		     log,read_events,[1]) of
+	[LogInfo]->
+		io:format("~p~n",[{?MODULE,?LINE,LogInfo}]),
+	    if 
+		Prev==LogInfo->
+		    io:format("~p~n",[{?MODULE,?LINE,Prev}]),
+		    NewPrev=Prev;
+		true ->
+		    io:format("~p~n",[LogInfo]),
+		    NewPrev=LogInfo
+	    end;
+	{badrpc,Err}->
+	    io:format("~p~n",[{badrpc,Err}]),
+	    NewPrev=[]
+    end,
+    NewPrev.
+
 %% --------------------------------------------------------------------
 %% Function: 
 %% Description:

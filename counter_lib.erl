@@ -14,10 +14,9 @@
 %% --------------------------------------------------------------------
 
 %% External exports
--compile(export_all).
+%-compile(export_all).
 
-%-export([load_start_node/3,stop_unload_node/3
-%	]).
+-export([]).
 
 
 %% ====================================================================
