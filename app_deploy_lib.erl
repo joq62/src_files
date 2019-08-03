@@ -122,9 +122,9 @@ stop_unload_app(Node,Application)->
 	    rpc:call(Node,file,delete,[AppFilename]),
 	    unload_modules(Node,Modules),
 	    Reply=ok,
-	    rpc:eval_everywhere(app_discovery,update_app_lists,[]),
-	    Event=[{node,Node},{event_level,info},{event_info,['Server stopped',Application]}],
-	    rpc:cast(node(),app_deploy_lib,cast,[log,{log,add_event,[Event]}]);
+	    rpc:eval_everywhere(app_discovery,update_app_lists,[]);
+	%    Event=[{node,Node},{event_level,info},{event_info,['Server stopped',Application]}],
+	 %   rpc:cast(node(),app_deploy_lib,cast,[log,{log,add_event,[Event]}]);
 	false ->
 	    Event=[{node,node()},{event_level,error},{event_info,['Service doesnt exists',Node,Application]}],
 	    rpc:cast(node(),app_deploy_lib,cast,[log,{log,add_event,[Event]}]),
