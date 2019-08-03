@@ -17,7 +17,7 @@
 %% External exports
 %-compile(export_all).
 
--export([sync/1,check_apps/0,tick/1
+-export([sync/1,check_apps/0,query/2,tick/1
 	]).
 
 

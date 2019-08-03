@@ -71,7 +71,7 @@ load_start_app(Node,Application)->
 		    {modules,Modules}=lists:keyfind(modules,1,Info),
 		 %   Modules_Filenames=[{Module,filename:join(?PATH_EBIN,atom_to_list(Module)++".beam")}||Module<-Modules],
 		    Modules_Filenames=[{Module,filename:join(?PATH_SRC_FILES,atom_to_list(Module)++".erl")}||Module<-Modules],
-		    Result = load_modules(Node,Modules_Filenames,[]),
+		    _Result = load_modules(Node,Modules_Filenames,[]),
 %		    io:format("Result = load_modules ~p~n",[{?MODULE,?LINE,Result}]),
 		    {ok,Binary}=file:read_file(AppFullFilename),
 		    ok=rpc:call(Node,file,write_file,[AppFilename,Binary],5000),

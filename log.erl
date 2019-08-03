@@ -70,9 +70,6 @@ new_event()->
 read_events(NumEvents)->
     gen_server:call(?MODULE, {read_events,NumEvents},infinity).
 
-heart_beat()->
-    gen_server:call(?MODULE, {heart_beat},infinity).
-
 %%-----------------------------------------------------------------------
 
 add_event(Event)->
@@ -95,7 +92,6 @@ print_event()->
 init([]) ->
     Event=[{node,node()},{event_level,info},{event_info,[?MODULE,?LINE,'service started',?MODULE]}],
     {NewEvents,NewEventNum}=rpc:call(node(),log_lib,add_event,[date(),time(),Event,[],0,?MAX_EVENTS]),
-    [Latest_event|_]=NewEvents,
        
     {ok, #state{max_events=?MAX_EVENTS,events=NewEvents,event_num=NewEventNum,latest_event=[]}}.    
     

@@ -15,10 +15,11 @@
 %% --------------------------------------------------------------------
 
 %% External exports
--compile(export_all).
+%-compile(export_all).
 
-%-export([load_start_node/3,stop_unload_node/3
-%	]).
+-export([read_events/2,format_event/1,
+	 add_event/6
+	]).
 
 
 %% ====================================================================

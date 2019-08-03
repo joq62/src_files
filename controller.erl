@@ -90,7 +90,7 @@ init([]) ->
     application:start(app_discovery),    
     application:start(log), 
     application:start(app_deploy),
-    R=rpc:call(node(),controller_lib,deploy_app_discovery,[?NUM_TRIES,?DEPLOY_INTERVAL,false]),
+    _R=rpc:call(node(),controller_lib,deploy_app_discovery,[?NUM_TRIES,?DEPLOY_INTERVAL,false]),
   %  io:format("R= ~p~n",[{date(),time(),?MODULE,?LINE,R}]),
     spawn(controller,sync,[?SYNC_INTERVAL]),
     StartEvent=[{node,node()},{event_level,info},{event_info,['Started server',?MODULE]}],

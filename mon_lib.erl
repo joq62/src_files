@@ -15,10 +15,11 @@
 %% --------------------------------------------------------------------
 -define(MANY_EVENTS,50).
 %% External exports
--compile(export_all).
+%-compile(export_all).
 
-%-export([load_start_node/3,stop_unload_node/3
-%	]).
+-export([print_events/1,format_event/1,
+	 cast/2,call/2
+	]).
 
 
 %% ====================================================================
