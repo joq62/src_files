@@ -30,32 +30,22 @@
 %% Returns: non
 %% --------------------------------------------------------------------
 print_events(many)->
-    Reply= case mon_lib:call(controller,{app_discovery,query,[log]}) of
+    Reply= case mon_lib:call(log,{log,read_events,[?MANY_EVENTS]}) of
 	       {error,Err}->
-		    {error,Err};
-	       [AppNode|_] ->
-		   case  mon_lib:call(AppNode,{log,read_events,[?MANY_EVENTS]}) of
-		       {error,Err}->
-			   {error,Err};
-		       Events ->
-			   [format_event(Event)||Event<-Events]
-		   end
+		   {error,Err};
+	       Events ->
+		   [format_event(Event)||Event<-Events]
 	   end,
     Reply;
 print_events(Num) ->
-    Reply=case mon_lib:call(controller,{app_discovery,query,[log]}) of
-	      {error,Err}->
+    Reply= case  mon_lib:call(log,{log,read_events,[Num]}) of
+	       {error,Err}->
 		   {error,Err};
-	      [AppNode|_] ->
-		  case  mon_lib:call(AppNode,{log,read_events,[Num]}) of
-		      {error,Err}->
-			  {error,Err};
-		      []->
-			  {[],no_print}; 
-		      Events ->
-			  [format_event(Event)||Event<-Events]
-		  end
-	  end,
+	       []->
+		   {[],no_print}; 
+	       Events ->
+		   [format_event(Event)||Event<-Events]
+	   end,
     Reply.
 
 format_event(Event)->
