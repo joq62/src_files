@@ -86,6 +86,8 @@ heart_beat(Interval)->
 %
 %% --------------------------------------------------------------------
 init([]) ->
+    %strange - to secure contact with controller
+    net_adm:ping('controller@joqhome.dynamic-dns.net'),
     rpc:call(node(),mon_lib,print_events,[all]),
     spawn(mon,heart_beat,[?INTERVAL]),
     
@@ -101,6 +103,9 @@ init([]) ->
 %%          {stop, Reason, Reply, State}   | (terminate/2 is called)
 %%          {stop, Reason, State}            (terminate/2 is called)
 %% --------------------------------------------------------------------
+handle_call({print_events,Num}, _From, State) ->
+    Reply=rpc:call(node(),mon_lib,print_events,[Num]),
+    {reply, Reply, State};
 
 handle_call({stop}, _From, State) ->
     {stop, normal, shutdown_ok, State};
