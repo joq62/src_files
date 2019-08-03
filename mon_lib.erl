@@ -34,7 +34,9 @@ print_events(many)->
 	       {error,Err}->
 		   {error,Err};
 	       Events ->
-		   [print_format_event(Event)||Event<-Events]
+		   % Reverse Events to get the latest last
+		   ReversedEvents=lists:reverse(Events),
+		   [print_format_event(Event)||Event<-ReversedEvents]
 	   end,
     Reply;
 print_events(Num) ->
@@ -44,7 +46,9 @@ print_events(Num) ->
 	       []->
 		   {[],no_print}; 
 	       Events ->
-		   [print_format_event(Event)||Event<-Events]
+		   % Reverse Events to get the latest last
+		   ReversedEvents=lists:reverse(Events),
+		   [print_format_event(Event)||Event<-ReversedEvents]
 	   end,
     Reply.
 
