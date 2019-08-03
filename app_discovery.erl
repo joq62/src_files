@@ -112,11 +112,12 @@ handle_call({app_nodes_list}, _From, State) ->
     {reply, Reply, State};
 
 handle_call({query,WantedApp}, _From, State) ->
-%  {NodeAppList,AppNodesList}=app_discovery_lib:check_apps(),
-    AppNodesList=State#state.app_nodes_list,
-   % glurk=AppNodesList,
-    
-    Reply=[Node||{App,Node}<-AppNodesList,true==(WantedApp==App)],
+   Reply=case rpc:call(node(),app_discovery_lib,query,[WantedApp,State#state.app_nodes_list]) of
+	     {badrpc,Err}->
+		 {badrpc,Err};
+	     Nodes->
+		 Nodes
+	 end,
     {reply, Reply, State};
 
 handle_call({all_apps}, _From, State) ->
