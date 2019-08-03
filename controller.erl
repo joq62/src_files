@@ -110,6 +110,8 @@ init([]) ->
 handle_call({start_app,Node,Application},_From, State) ->
     case rpc:call(node(),app_deploy,load_start_app,[Node,Application]) of
 	ok->
+	    Event=[{node,node()},{event_level,info},{event_info,['Application started',Node,Application]}],
+	    rpc:cast(node(),controller_lib,cast,[log,{log,add_event,[Event]}]),
 	    Reply=ok;
 	{error,Err}->
 	    Event=[{node,node()},{event_level,error},{event_info,[Err]}],
@@ -125,6 +127,8 @@ handle_call({start_app,Node,Application},_From, State) ->
 handle_call({stop_app,Node,Application},_From, State) ->
     case rpc:call(node(),app_deploy,stop_unload_app,[Node,Application]) of
 	ok->
+            Event=[{node,node()},{event_level,info},{event_info,['Application stopped',Node,Application]}],
+	    rpc:cast(node(),controller_lib,cast,[log,{log,add_event,[Event]}]),
 	    Reply=ok;
 	{error,Err}->
 	    Event=[{node,node()},{event_level,error},{event_info,[Err]}],
