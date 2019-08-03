@@ -145,7 +145,7 @@ handle_cast({heart_beat,Interval}, State) ->
 	      false->
 		  no_print;
 	      Event ->
-		  rpc:call(node(),mon_lib,print_format_event,[Event])
+		  rpc:call(node(),mon_lib,print_event,[1])
 	  end
     end,
     spawn(mon,heart_beat,[?INTERVAL]),   
