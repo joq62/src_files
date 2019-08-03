@@ -26,6 +26,7 @@
 %-compile(export_all).
 
 -export([campaign/0,deploy_app_discovery/3,tick/1,
+	 print_event/1,
 	 cast/2
 	]).
 
@@ -50,6 +51,20 @@ cast(App,{M,F,A})->
     end,
     Reply.
 
+%% --------------------------------------------------------------------
+%% Function: 
+%% Description:
+%% Returns: non
+%% {node,node_8},{event_level,debug},{event_info,[Info]}],
+%% --------------------------------------------------------------------
+print_event(Event)->
+    {date,D}= lists:keyfind(date,1,Event),
+    {time,T}= lists:keyfind(time,1,Event), 
+    {node,Node}= lists:keyfind(node,1,Event),
+    {event_level,Level}= lists:keyfind(event_level,1,Event),
+    {event_info,Info}= lists:keyfind(event_info,1,Event),
+    
+    io:format(" ~w ~n",[{D,T,Node,Level,Info}]).
 %% --------------------------------------------------------------------
 %% Function: 
 %% Description:

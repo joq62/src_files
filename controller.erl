@@ -29,7 +29,8 @@
 %% ====================================================================
 
 
--export([ctrl_info/0,
+-export([print_events/1,
+	 ctrl_info/0,
 	 update_config/2,
 	 sync/1
 	]).
@@ -59,6 +60,9 @@ stop()-> gen_server:call(?MODULE, {stop},infinity).
 ctrl_info()-> gen_server:call(?MODULE, {ctrl_info},infinity).
 
 %%----------Cast-------------------------------------------------------------
+print_events(Num)->
+    gen_server:cast(?MODULE, {print_events,Num}). 
+
 sync(Interval)->
     gen_server:cast(?MODULE, {sync,Interval}).    
 
@@ -119,6 +123,13 @@ handle_call(Request, From, State) ->
 %%          {noreply, State, Timeout} |
 %%          {stop, Reason, State}            (terminate/2 is called)
 %% --------------------------------------------------------------------
+handle_cast({print_events,Num},State) ->
+    Events=log:read_events(Num),
+   % io:format("  ~p~n",[Events]),
+    [rpc:call(node(),controller_lib,print_event,[Event])||Event<-Events],
+    {noreply, State};
+
+
 handle_cast({sync,Interval},State) ->
 %    io:format("*************** Start Campaign ***********' ~p~n",[{date(),time()}]), 
     case rpc:call(node(),controller_lib,campaign,[],30000) of
@@ -138,7 +149,7 @@ handle_cast({sync,Interval},State) ->
 	false->
 	    ok;
 	NewEvent->
-	    io:format(" ~p~n",[NewEvent])
+	    rpc:call(node(),controller_lib,print_event,[NewEvent])
     end,
  %   io:format("------------- End Campaign ----------' ~p~n",[{date(),time()}]),
     spawn(controller_lib,tick,[Interval]),

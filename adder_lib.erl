@@ -25,7 +25,7 @@
 %% External functions
 %% ====================================================================
 cast(App,{M,F,A})->
-    io:format("App,{M,F,A} = ~p~n",[{?MODULE,?LINE,App,{M,F,A}}]),
+%    io:format("App,{M,F,A} = ~p~n",[{?MODULE,?LINE,App,{M,F,A}}]),
     case rpc:call(node(),app_discovery,query,[App]) of
 	{badrpc,Err}->
 	    Reply={error,[Err]};
