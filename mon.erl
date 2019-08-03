@@ -37,7 +37,8 @@
 
 
 
--export([print_events/1,
+-export([start_app/2,stop_app/2,
+	 print_events/1,
 	 heart_beat/1
 	]).
 
@@ -62,6 +63,9 @@ stop()-> gen_server:call(?MODULE, {stop},infinity).
 
 
 %%-----------------------------------------------------------------------
+start_app(Node,App)-> gen_server:call(?MODULE, {start_app,Node,App},infinity).
+stop_app(Node,App)-> gen_server:call(?MODULE, {stop_app,Node,App},infinity).
+
 print_events(Num)->
     gen_server:call(?MODULE, {print_events,Num},infinity).
 
@@ -102,6 +106,14 @@ init([]) ->
 %%          {stop, Reason, Reply, State}   | (terminate/2 is called)
 %%          {stop, Reason, State}            (terminate/2 is called)
 %% --------------------------------------------------------------------
+handle_call({start_app,Node,App}, _From, State) ->
+    Reply=rpc:call(node(),mon_lib,call,[controller,{controller,start_app,[Node,App]}]),
+    {reply, Reply, State};
+
+handle_call({stop_app,Node,App}, _From, State) ->
+    Reply=rpc:call(node(),mon_lib,call,[controller,{controller,stop_app,[Node,App]}]),
+    {reply, Reply, State};
+
 handle_call({print_events,Num}, _From, State) ->
     Reply=rpc:call(node(),mon_lib,print_events,[Num]),
     {reply, Reply, State};
