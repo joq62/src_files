@@ -37,7 +37,8 @@
 
 
 
--export([heart_beat/1
+-export([print_events/1,
+	 heart_beat/1
 	]).
 
 -export([start/0,
@@ -60,7 +61,11 @@ start()-> gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
 stop()-> gen_server:call(?MODULE, {stop},infinity).
 
 
+%%-----------------------------------------------------------------------
+print_events(Num)->
+    gen_server:call(?MODULE, {print_events,Num},infinity).
 
+%%-----------------------------------------------------------------------
 %%-----------------------------------------------------------------------
 heart_beat(Interval)->
     gen_server:cast(?MODULE, {heart_beat,Interval}).
@@ -81,10 +86,10 @@ heart_beat(Interval)->
 %
 %% --------------------------------------------------------------------
 init([]) ->
-    Prev=mon_lib:print_event([]),
+    rpc:call(node(),mon_lib,print_events,[all]),
     spawn(mon,heart_beat,[?INTERVAL]),
     
-    {ok, #state{prev=Prev}}.    
+    {ok, #state{}}.    
     
 %% --------------------------------------------------------------------
 %% Function: handle_call/3
@@ -113,10 +118,21 @@ handle_call(Request, From, State) ->
 %% --------------------------------------------------------------------
 handle_cast({heart_beat,Interval}, State) ->
     timer:sleep(Interval),
-    NewPrev=mon_lib:print_event([State#state.prev]),
-    NewState=State#state{prev=NewPrev},
+     case mon_lib:call(controller,{app_discovery,query,[log]}) of
+	{error,_Err}->
+	    no_print;
+	[AppNode|_] ->
+	  case mon_lib:call(AppNode,{log,new_event,[]}) of
+	      {error,_Err}->
+		  no_print;
+	      false->
+		  no_print;
+	      Event ->
+		  rpc:call(node(),mon_lib,print_format_event,[Event])
+	  end
+    end,
     spawn(mon,heart_beat,[?INTERVAL]),   
-    {noreply, NewState};
+    {noreply, State};
 
 handle_cast(Msg, State) ->
     io:format("unmatched match cast ~p~n",[{?MODULE,?LINE,Msg}]),

@@ -93,8 +93,6 @@ handle_call({add,A,B}, _From, State) ->
     {reply, Reply, State};
 
 handle_call({stop}, _From, State) ->
-    Event=[{node,node()},{event_level,info},{event_info,['Server stopped',?MODULE]}],
-    rpc:cast(node(),adder_lib,cast,[log,{log,add_event,[Event]}]),
     {stop, normal, shutdown_ok, State};
 
 handle_call(Request, From, State) ->

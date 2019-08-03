@@ -49,6 +49,8 @@ cast(App,{M,F,A})->
 load_start_app(Node,Application)->
     case net_adm:ping(Node) of
 	pang->
+	    Event=[{node,node()},{event_level,error},{event_info,['tried to start app nodedown',?MODULE,?LINE,Node,Application]}],
+	    rpc:cast(node(),app_deploy_lib,cast,[log,{log,add_event,[Event]}]),
 	    Reply={error,[?MODULE,?LINE,date(),time(),nodedown,Node]};
 	pong->
 	    Apps=rpc:call(Node,application,which_applications,[],5000),
@@ -76,6 +78,8 @@ load_start_app(Node,Application)->
 			    Reply={error,[?MODULE,?LINE,date(),time(),Err,Node,Application]}
 		    end;    
 		true->
+		 %   Event=[{node,node()},{event_level,error},{event_info,['already_loaded_started',Node,Application]}],
+		  %  rpc:cast(node(),app_deploy_lib,cast,[log,{log,add_event,[Event]}]),
 		    Reply={error,[?MODULE,?LINE,date(),time(),'already_loaded_started',Node,Application]}
 	    end
     end,
@@ -105,15 +109,20 @@ stop_unload_app(Node,Application)->
 	    {ok,Terms}=rpc:call(Node,file,consult,[AppFilename]),
 	    [{application,Application,Info}]=Terms,
 	    {modules,Modules}=lists:keyfind(modules,1,Info),
+	    rpc:call(Node,application,stop,[Application]),
+	    
+	    rpc:call(Node,application,unload,[Application]),
 	    [rpc:call(Node,file,delete,[atom_to_list(Module)++".erl"])||Module<-Modules],
 	    [rpc:call(Node,file,delete,[atom_to_list(Module)++".beam"])||Module<-Modules],
-	    rpc:call(Node,application,stop,[Application]),
-	    rpc:call(Node,application,unload,[Application]),
 	    rpc:call(Node,file,delete,[AppFilename]),
 	    unload_modules(Node,Modules),
 	    Reply=ok,
-	    rpc:eval_everywhere(app_discovery,update_app_lists,[]);
+	    rpc:eval_everywhere(app_discovery,update_app_lists,[]),
+	    Event=[{node,Node},{event_level,info},{event_info,['Server stopped',Application]}],
+	    rpc:cast(node(),app_deploy_lib,cast,[log,{log,add_event,[Event]}]);
 	false ->
+	    Event=[{node,node()},{event_level,error},{event_info,['Service doesnt exists',Node,Application]}],
+	    rpc:cast(node(),app_deploy_lib,cast,[log,{log,add_event,[Event]}]),
 	    Reply={error,['eexist',Application]}
     end,
     Reply.

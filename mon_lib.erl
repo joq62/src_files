@@ -13,7 +13,7 @@
 %% --------------------------------------------------------------------
 
 %% --------------------------------------------------------------------
-
+-define(MANY_EVENTS,50).
 %% External exports
 -compile(export_all).
 
@@ -29,35 +29,79 @@
 %% Description:
 %% Returns: non
 %% --------------------------------------------------------------------
-
-%% --------------------------------------------------------------------
-%% Function: 
-%% Description:
-%% Returns: non
-%% --------------------------------------------------------------------
-print_event(Prev)->
-    io:format("~p~n",[Prev]),
-    case rpc:call('controller@joqhome.dynamic-dns.net',
-		     log,read_events,[1]) of
-	[LogInfo]->
-		io:format("~p~n",[{?MODULE,?LINE,LogInfo}]),
-	    if 
-		Prev==LogInfo->
-		    io:format("~p~n",[{?MODULE,?LINE,Prev}]),
-		    NewPrev=Prev;
-		true ->
-		    io:format("~p~n",[LogInfo]),
-		    NewPrev=LogInfo
-	    end;
-	{badrpc,Err}->
-	    io:format("~p~n",[{badrpc,Err}]),
-	    NewPrev=[]
+print_events(many)->
+    case mon_lib:call(controller,{app_discovery,query,[log]}) of
+	{error,_Err}->
+	    no_print;
+	[AppNode|_] ->
+	  case  mon_lib:call(AppNode,{log,read_events,[?MANY_EVENTS]}) of
+	      {error,_Err}->
+		  no_print;
+	      Events ->
+		  [print_format_event(Event)||Event<-Events]
+	  end
     end,
-    NewPrev.
+    ok;
+print_events(Num) ->
+    case mon_lib:call(controller,{app_discovery,query,[log]}) of
+	{error,_Err}->
+	    no_print;
+	[AppNode|_] ->
+	  case  mon_lib:call(AppNode,{log,read_events,[Num]}) of
+	      {error,_Err}->
+		  no_print;
+	      []->
+		  no_print; 
+	      Events ->
+		  [print_format_event(Event)||Event<-Events]
+	  end
+    end,
+    ok.
+
+print_format_event(Event)->
+    {date,D}= lists:keyfind(date,1,Event),
+    {time,T}= lists:keyfind(time,1,Event), 
+    {node,Node}= lists:keyfind(node,1,Event),
+    {event_level,Level}= lists:keyfind(event_level,1,Event),
+    {event_info,Info}= lists:keyfind(event_info,1,Event),
+    io:format(" ~w ~n",[{D,T,Node,Level,Info}]).
+    
+%% --------------------------------------------------------------------
+%% Function: 
+%% Description:
+%% Returns: non
+%% --------------------------------------------------------------------
 
 %% --------------------------------------------------------------------
 %% Function: 
 %% Description:
 %% Returns: non
 %% --------------------------------------------------------------------
-%filter_events(Key
+cast(App,{M,F,A})->
+ %   io:format("App,{M,F,A} = ~p~n",[{?MODULE,?LINE,App,{M,F,A}}]),
+    case rpc:call(node(),app_discovery,query,[App]) of
+	{badrpc,Err}->
+	    Reply={error,[Err]};
+	[AppNode|_] ->
+	    Reply=rpc:cast(AppNode,M,F,A);
+	[] ->
+	    Reply={error,[{?MODULE,?LINE,'no avaible application',App}]}
+    end,
+    Reply.
+
+%% --------------------------------------------------------------------
+%% Function: 
+%% Description:
+%% Returns: non
+%% --------------------------------------------------------------------
+call(App,{M,F,A})->
+ %   io:format("App,{M,F,A} = ~p~n",[{?MODULE,?LINE,App,{M,F,A}}]),
+    case rpc:call(node(),app_discovery,query,[App]) of
+	{badrpc,Err}->
+	    Reply={error,[Err]};
+	[AppNode|_] ->
+	    Reply=rpc:call(AppNode,M,F,A);
+	[] ->
+	    Reply={error,[{?MODULE,?LINE,'no avaible application',App}]}
+    end,
+    Reply.

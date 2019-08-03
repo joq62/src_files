@@ -27,7 +27,7 @@
 
 -export([campaign/0,deploy_app_discovery/3,tick/1,
 	 print_event/1,
-	 cast/2
+	 call/2,cast/2
 	]).
 
 
@@ -55,6 +55,24 @@ cast(App,{M,F,A})->
 %% Function: 
 %% Description:
 %% Returns: non
+%% --------------------------------------------------------------------
+call(App,{M,F,A})->
+ %   io:format("App,{M,F,A} = ~p~n",[{?MODULE,?LINE,App,{M,F,A}}]),
+    case rpc:call(node(),app_discovery,query,[App]) of
+	{badrpc,Err}->
+	    Reply={error,[Err]};
+	[AppNode|_] ->
+	    Reply=rpc:call(AppNode,M,F,A);
+	[] ->
+	    Reply={error,[{?MODULE,?LINE,'no avaible application',App}]}
+    end,
+    Reply.
+
+
+%% --------------------------------------------------------------------
+%% Function: 
+%% Description:
+%% Returns: non
 %% {node,node_8},{event_level,debug},{event_info,[Info]}],
 %% --------------------------------------------------------------------
 print_event(Event)->
@@ -63,7 +81,6 @@ print_event(Event)->
     {node,Node}= lists:keyfind(node,1,Event),
     {event_level,Level}= lists:keyfind(event_level,1,Event),
     {event_info,Info}= lists:keyfind(event_info,1,Event),
-    
     io:format(" ~w ~n",[{D,T,Node,Level,Info}]).
 %% --------------------------------------------------------------------
 %% Function: 
@@ -130,6 +147,8 @@ apps_to_start([{App,Nodes}|T],NodeAppsList,AvailableNodes,Acc) ->
 		    A=[app_deploy:load_start_app(Node,App)];
 		   % io:format("A, Node,~p~n",[{?MODULE,?LINE,A,Node}]);
 		_->
+		 %   Event=[{node,node()},{event_level,error},{event_info,['Service already exists ',?MODULE,?LINE,App]}],
+		  %  rpc:cast(node(),controller_lib,cast,[log,{log,add_event,[Event]}]),
 		    A=[{error,[?MODULE,?LINE,eexists]}]
 	    end; 
 	  Nodes->

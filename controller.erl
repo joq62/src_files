@@ -29,7 +29,8 @@
 %% ====================================================================
 
 
--export([print_events/1,
+-export([start_app/2,stop_app/2,
+	 print_events/1,
 	 ctrl_info/0,
 	 update_config/2,
 	 sync/1
@@ -58,6 +59,9 @@ stop()-> gen_server:call(?MODULE, {stop},infinity).
 
 %%-----------Call ------------------------------------------------------------
 ctrl_info()-> gen_server:call(?MODULE, {ctrl_info},infinity).
+
+start_app(Node,Application)-> gen_server:call(?MODULE, {start_app,Node,Application},infinity).
+stop_app(Node,Application)-> gen_server:call(?MODULE, {stop_app,Node,Application},infinity).
 
 %%----------Cast-------------------------------------------------------------
 print_events(Num)->
@@ -103,6 +107,39 @@ init([]) ->
 %%          {stop, Reason, Reply, State}   | (terminate/2 is called)
 %%          {stop, Reason, State}            (aterminate/2 is called)
 %% --------------------------------------------------------------------
+handle_call({start_app,Node,Application},_From, State) ->
+    case rpc:call(node(),app_deploy,load_start_app,[Node,Application]) of
+	ok->
+	    Reply=ok;
+	{error,Err}->
+	    Event=[{node,node()},{event_level,error},{event_info,[Err]}],
+	    rpc:cast(node(),controller_lib,cast,[log,{log,add_event,[Event]}]),
+	    Reply={error,Err};
+	{badrpc,Err}->
+	    Event=[{node,node()},{event_level,error},{event_info,[badrpc,Err]}],
+	    rpc:cast(node(),controller_lib,cast,[log,{log,add_event,[Event]}]),
+	    Reply={error,Err}
+    end,
+    {reply, Reply, State};
+
+handle_call({stop_app,Node,Application},_From, State) ->
+    case rpc:call(node(),app_deploy,stop_unload_app,[Node,Application]) of
+	ok->
+	    Reply=ok;
+	{error,Err}->
+	    Event=[{node,node()},{event_level,error},{event_info,[Err]}],
+	    rpc:cast(node(),controller_lib,cast,[log,{log,add_event,[Event]}]),
+	    Reply={error,Err};
+	{badrpc,Err}->
+	    Event=[{node,node()},{event_level,error},{event_info,[badrpc,Err]}],
+	    rpc:cast(node(),controller_lib,cast,[log,{log,add_event,[Event]}]),
+	    Reply={error,Err}
+    end,
+    {reply, Reply, State};
+
+
+
+
 handle_call({ctrl_info},_From, State) ->
     Reply = {State#state.available_nodes,
 	     State#state.node_apps_list,State#state.latest_start_result},
@@ -125,7 +162,6 @@ handle_call(Request, From, State) ->
 %% --------------------------------------------------------------------
 handle_cast({print_events,Num},State) ->
     Events=log:read_events(Num),
-   % io:format("  ~p~n",[Events]),
     [rpc:call(node(),controller_lib,print_event,[Event])||Event<-Events],
     {noreply, State};
 
@@ -145,12 +181,12 @@ handle_cast({sync,Interval},State) ->
 	   % rpc:cast(node(),controller_lib,cast,[log,{log,add_event,[Event]}]),
 	    ok
     end,
-    case log:new_event() of
-	false->
-	    ok;
-	NewEvent->
-	    rpc:call(node(),controller_lib,print_event,[NewEvent])
-    end,
+ %   case log:new_event() of
+%	false->
+%	    ok;
+%	NewEvent->
+%	    rpc:call(node(),controller_lib,print_event,[NewEvent])
+ %   end,
  %   io:format("------------- End Campaign ----------' ~p~n",[{date(),time()}]),
     spawn(controller_lib,tick,[Interval]),
     {noreply, NewState};
@@ -161,7 +197,8 @@ handle_cast({update_config,Filename,Binary},State) ->
     {noreply, State};
 
 handle_cast(Msg, State) ->
-    io:format("unmatched match cast ~p~n",[{?MODULE,?LINE,Msg}]),
+    Event=[{node,node()},{event_level,error},{event_info,['unmathced signal ',?MODULE,?LINE,Msg]}],
+    rpc:cast(node(),controller_lib,cast,[log,{log,add_event,[Event]}]),
     {noreply, State}.
 
 %% --------------------------------------------------------------------
