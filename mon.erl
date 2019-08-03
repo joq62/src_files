@@ -115,7 +115,8 @@ handle_call({stop_app,Node,App}, _From, State) ->
     {reply, Reply, State};
 
 handle_call({print_events,Num}, _From, State) ->
-    Reply=rpc:call(node(),mon_lib,print_events,[Num]),
+    rpc:call(node(),mon_lib,print_events,[Num]),
+    Reply=ok,
     {reply, Reply, State};
 
 handle_call({stop}, _From, State) ->
@@ -140,7 +141,7 @@ handle_cast({heart_beat,Interval}, State) ->
 	     io:format("~p~n",[{?MODULE,?LINE,{error,_Err}}]),
 	     no_print;
 	 false->
-	     io:format("~p~n",[{?MODULE,?LINE,false}]),
+	    % io:format("~p~n",[{?MODULE,?LINE,false}]),
 	     no_print;
 	 Event ->
 	     rpc:call(node(),mon_lib,print_format_event,[Event])
