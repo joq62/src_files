@@ -39,6 +39,7 @@
 
 -export([start_app/2,stop_app/2,
 	 print_events/1,
+	 cast/2,call/2,
 	 heart_beat/1
 	]).
 
@@ -66,11 +67,16 @@ stop()-> gen_server:call(?MODULE, {stop},infinity).
 start_app(Node,App)-> gen_server:call(?MODULE, {start_app,Node,App},infinity).
 stop_app(Node,App)-> gen_server:call(?MODULE, {stop_app,Node,App},infinity).
 
+call(App,{M,F,A})->
+    gen_server:call(?MODULE, {call,App,{M,F,A}},infinity).
+
 print_events(Num)->
     gen_server:call(?MODULE, {print_events,Num},infinity).
 
 %%-----------------------------------------------------------------------
 %%-----------------------------------------------------------------------
+cast(App,{M,F,A})->
+    gen_server:cast(?MODULE, {cast,App,{M,F,A}}).
 heart_beat(Interval)->
     gen_server:cast(?MODULE, {heart_beat,Interval}).
 
@@ -106,6 +112,10 @@ init([]) ->
 %%          {stop, Reason, Reply, State}   | (terminate/2 is called)
 %%          {stop, Reason, State}            (terminate/2 is called)
 %% --------------------------------------------------------------------
+handle_call({call,App,{M,F,A}}, _From, State) ->
+    Reply=rpc:call(node(),mon_lib,call,[App,{M,F,A}]),
+    {reply, Reply, State};
+
 handle_call({start_app,Node,App}, _From, State) ->
     Reply=rpc:call(node(),mon_lib,call,[controller,{controller,start_app,[Node,App]}]),
     {reply, Reply, State};
@@ -133,6 +143,10 @@ handle_call(Request, From, State) ->
 %%          {noreply, State, Timeout} |
 %%          {stop, Reason, State}            (terminate/2 is called)
 %% --------------------------------------------------------------------
+handle_cast({cast,App,{M,F,A}}, State) ->
+    rpc:call(node(),mon_lib,cast,[App,{M,F,A}]),		   
+    {noreply, State};
+
 handle_cast({heart_beat,Interval}, State) ->
     net_adm:ping('controller@joqhome.dynamic-dns.net'),
     timer:sleep(Interval),
