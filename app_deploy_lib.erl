@@ -17,6 +17,8 @@
 -define(PATH_EBIN,"ebin_files").
 -define(PATH_APP_FILES,"app_files").
 -define(PATH_SRC_FILES,"src_files").
+-define(GIT_APP_FILES,"https://github.com/joq62/app_files.git").
+-define(GIT_SRC_FILES,"https://github.com/joq62/src_files.git").
 %% External exports,
 %-compile(export_all).
 
@@ -58,6 +60,9 @@ load_start_app(Node,Application)->
 %	    io:format("Node, Apps = ~p~n",[{?MODULE,?LINE,Node,Apps}]),
 	    case lists:keymember(Application,1,Apps) of
 		false->	  
+		    % secure latest src
+		    os:cmd("git clone "++?GIT_SRC_FILES),
+		    os:cmd("git clone "++?GIT_APP_FILES),		    
 		   % Read app file 
 		    AppFilename=atom_to_list(Application)++".app",
 		    AppFullFilename=filename:join(?PATH_APP_FILES,AppFilename),
