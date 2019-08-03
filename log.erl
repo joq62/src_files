@@ -125,7 +125,7 @@ handle_call({new_event}, _From, State) ->
     {reply, Reply, NewState};
 
 handle_call({read_events,NumEvents}, _From, State) ->
-    Reply=lists:sublist(State#state.events,NumEvents),
+    Reply=log_lib:read_events(State#state.events,NumEvents),
     {reply, Reply, State};
 
 handle_call({stop}, _From, State) ->
