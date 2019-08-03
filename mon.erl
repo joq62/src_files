@@ -135,18 +135,15 @@ handle_call(Request, From, State) ->
 handle_cast({heart_beat,Interval}, State) ->
     net_adm:ping('controller@joqhome.dynamic-dns.net'),
     timer:sleep(Interval),
-     case mon_lib:call(controller,{app_discovery,query,[log]}) of
-	{error,_Err}->
-	    no_print;
-	[AppNode|_] ->
-	  case mon_lib:call(AppNode,{log,new_event,[]}) of
-	      {error,_Err}->
-		  no_print;
-	      false->
-		  no_print;
-	      Event ->
-		  rpc:call(node(),mon_lib,print_event,[1])
-	  end
+     case mon_lib:call(log,{log,new_event,[]}) of
+	 {error,_Err}->
+	     io:format("~p~n",[{?MODULE,?LINE,{error,_Err}}]),
+	     no_print;
+	 false->
+	     io:format("~p~n",[{?MODULE,?LINE,false}]),
+	     no_print;
+	 Event ->
+	     rpc:call(node(),mon_lib,print_format_event,[Event])
     end,
     spawn(mon,heart_beat,[?INTERVAL]),   
     {noreply, State};
