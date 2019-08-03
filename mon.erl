@@ -87,7 +87,7 @@ heart_beat(Interval)->
 %% --------------------------------------------------------------------
 init([]) ->
     %strange - to secure contact with controller
-    rpc:call(node(),mon_lib,print_events,[all]),
+    rpc:call(node(),mon_lib,print_events,[many]),
     spawn(mon,heart_beat,[?INTERVAL]),
     
     {ok, #state{}}.    
