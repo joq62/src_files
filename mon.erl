@@ -87,7 +87,6 @@ heart_beat(Interval)->
 %% --------------------------------------------------------------------
 init([]) ->
     %strange - to secure contact with controller
-    net_adm:ping('controller@joqhome.dynamic-dns.net'),
     rpc:call(node(),mon_lib,print_events,[all]),
     spawn(mon,heart_beat,[?INTERVAL]),
     
