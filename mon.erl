@@ -121,6 +121,7 @@ handle_call(Request, From, State) ->
 %%          {stop, Reason, State}            (terminate/2 is called)
 %% --------------------------------------------------------------------
 handle_cast({heart_beat,Interval}, State) ->
+    net_adm:ping('controller@joqhome.dynamic-dns.net'),
     timer:sleep(Interval),
      case mon_lib:call(controller,{app_discovery,query,[log]}) of
 	{error,_Err}->

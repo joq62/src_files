@@ -31,12 +31,12 @@
 %% --------------------------------------------------------------------
 print_events(many)->
     Reply= case mon_lib:call(controller,{app_discovery,query,[log]}) of
-	       {error,_Err}->
-		   no_print;
+	       {error,Err}->
+		    {error,Err};
 	       [AppNode|_] ->
 		   case  mon_lib:call(AppNode,{log,read_events,[?MANY_EVENTS]}) of
-		       {error,_Err}->
-			   no_print;
+		       {error,Err}->
+			   {error,Err};
 		       Events ->
 			   [format_event(Event)||Event<-Events]
 		   end
@@ -44,14 +44,14 @@ print_events(many)->
     Reply;
 print_events(Num) ->
     Reply=case mon_lib:call(controller,{app_discovery,query,[log]}) of
-	      {error,_Err}->
-		  no_print;
+	      {error,Err}->
+		   {error,Err};
 	      [AppNode|_] ->
 		  case  mon_lib:call(AppNode,{log,read_events,[Num]}) of
-		      {error,_Err}->
-			  no_print;
+		      {error,Err}->
+			  {error,Err};
 		      []->
-			  no_print; 
+			  {[],no_print}; 
 		      Events ->
 			  [format_event(Event)||Event<-Events]
 		  end
