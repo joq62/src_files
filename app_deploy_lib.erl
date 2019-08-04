@@ -61,7 +61,7 @@ load_start_app(Node,Application)->
 	    case lists:keymember(Application,1,Apps) of
 		false->	  
 		    % secure latest src
-		    os:cmd("git clone "++?GIT_SRC_FILES),
+%		    os:cmd("git clone "++?GIT_SRC_FILES),
 		  %  os:cmd("git clone "++?GIT_APP_FILES),
 		   % Read app file 
 		    AppFilename=atom_to_list(Application)++".app",
