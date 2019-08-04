@@ -62,7 +62,8 @@ load_start_app(Node,Application)->
 		false->	  
 		    % secure latest src
 		    os:cmd("git clone "++?GIT_SRC_FILES),
-		    os:cmd("git clone "++?GIT_APP_FILES),		    
+		    os:cmd("git clone "++?GIT_APP_FILES),
+		    timer:sleep(1000),
 		   % Read app file 
 		    AppFilename=atom_to_list(Application)++".app",
 		    AppFullFilename=filename:join(?PATH_APP_FILES,AppFilename),
