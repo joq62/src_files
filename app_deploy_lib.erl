@@ -60,6 +60,7 @@ load_start_app(Node,Application)->
 %	    io:format("Node, Apps = ~p~n",[{?MODULE,?LINE,Node,Apps}]),
 	    case lists:keymember(Application,1,Apps) of
 		false->	  
+
 		    % secure latest 
 		    os:cmd("sudo rm -rf "++?GIT_SRC_FILES),
 		    os:cmd("sudo rm -rf "++?GIT_APP_FILES),
